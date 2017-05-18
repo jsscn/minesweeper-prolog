@@ -38,12 +38,12 @@ reduce_row([Subtract | SubtractingTail], [Reference | ReferenceTail], [Reduced 
     reduce_row(SubtractingTail, ReferenceTail, ReducedTail).
 
 
-% Initiate
-reduce_grid([FirstRow, SecondRow | Tail]) :-
-    reduce_grid(FirstRow, SecondRow, Tail).
+% Initiate /1
+grid_reduces([FirstRow, SecondRow | Tail]) :-
+    grid_reduces(FirstRow, SecondRow, Tail).
 
-% Last row
-reduce_grid(PenultimateRow, ThisRow, []) :-
+% Last row /3
+grid_reduces(PenultimateRow, ThisRow, []) :-
     reduce_row(ThisRow, PenultimateRow, X1),
     reduce_row(X1, [0 | PenultimateRow], X2),
     [_ | PenultimateRowTail] = PenultimateRow,
@@ -53,8 +53,9 @@ reduce_grid(PenultimateRow, ThisRow, []) :-
     reduce_row(X4, ThisRowTail, Reduced),
     fully_reduced(Reduced).
 
-% First row
-reduce_grid(ThisRow, SecondRow, [NextRow | Tail]) :-
+% First row /3
+grid_reduces(ThisRow, SecondRow, [NextRow | Tail]) :-
+    grid_reduces(ThisRow, SecondRow, NextRow, Tail),
     reduce_row(ThisRow, SecondRow, X1),
     reduce_row(X1, [0 | SecondRow], X2),
     [_ | SecondRowTail] = SecondRow,
@@ -62,11 +63,11 @@ reduce_grid(ThisRow, SecondRow, [NextRow | Tail]) :-
     reduce_row(X3, [0 | ThisRow], X4),
     [_ | ThisRowTail] = ThisRow,
     reduce_row(X4, ThisRowTail, Reduced),
-    fully_reduced(Reduced),
-    reduce_grid(ThisRow, SecondRow, NextRow, Tail).
+    fully_reduced(Reduced).
 
-% Inner row
-reduce_grid(AboveRow, ThisRow, BelowRow, [NextRow | Tail]) :-
+% Inner row /4
+grid_reduces(AboveRow, ThisRow, BelowRow, [NextRow | Tail]) :-
+    grid_reduces(ThisRow, BelowRow, NextRow, Tail),
     reduce_row(ThisRow, AboveRow, X1),
     reduce_row(X1, [0 | AboveRow], X2),
     [_ | AboveRowTail] = AboveRow,
@@ -78,11 +79,11 @@ reduce_grid(AboveRow, ThisRow, BelowRow, [NextRow | Tail]) :-
     reduce_row(X6, [0 | ThisRow], X7),
     [_ | ThisRowTail] = ThisRow,
     reduce_row(X7, ThisRowTail, Reduced),
-    fully_reduced(Reduced),
-    reduce_grid(ThisRow, BelowRow, NextRow, Tail).
+    fully_reduced(Reduced).
 
-
-reduce_grid(AboveRow, ThisRow, BelowRow, []) :-
+% Second to last row /4
+grid_reduces(AboveRow, ThisRow, BelowRow, []) :-
+    grid_reduces(ThisRow, BelowRow, []),
     reduce_row(ThisRow, AboveRow, X1),
     reduce_row(X1, [0 | AboveRow], X2),
     [_ | AboveRowTail] = AboveRow,
@@ -94,10 +95,9 @@ reduce_grid(AboveRow, ThisRow, BelowRow, []) :-
     reduce_row(X6, [0 | ThisRow], X7),
     [_ | ThisRowTail] = ThisRow,
     reduce_row(X7, ThisRowTail, Reduced),
-    fully_reduced(Reduced),
-    reduce_grid(ThisRow, BelowRow, []).
+    fully_reduced(Reduced).
 
-valid_board(Board) :- reduce_grid(Board).
+valid_board(Board) :- grid_reduces(Board).
 
 print_board([]).
 print_board([Row | Rows]) :- print_row(Row), print_board(Rows).
@@ -105,4 +105,4 @@ print_board([Row | Rows]) :- print_row(Row), print_board(Rows).
 print_row([]) :- nl.
 print_row([Tile | Tiles]) :- write(Tile), write(" "), print_row(Tiles).
 
-minesweeper(Query) :- valid_board(Query), print_board(Query).
+minesweeper(Board) :- valid_board(Board), print_board(Board).
