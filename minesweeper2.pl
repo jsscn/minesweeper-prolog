@@ -48,48 +48,36 @@ valid_number(-8).
 % the one we are referencing in order to adapt the first;
 % third is the adapted list.
 
-reduce(*, *, *).
-reduce(Whatever, Number, Whatever) :- valid_number(Number).
-reduce(Number, *, NewNumber) :- minus_one(Number, NewNumber).
 
-reduceNumbersRow([], [_|_], []).
-reduceNumbersRow(Remainder, [], Remainder).
+reduce(Number, *, NewNumber) :- minus_one(Number, NewNumber).
+reduce(Whatever, Number, Whatever) :- valid_number(Number).
+reduce(*, *, *).
+
+reduceNumbersRow([], [_|_], []) :- !.
+reduceNumbersRow(Remainder, [], Remainder) :- !.
 
 reduceNumbersRow([Subtract | SubtractingTail], [Reference | ReferenceTail], [Reduced | ReducedTail]) :-
     reduce(Subtract, Reference, Reduced),
     reduceNumbersRow(SubtractingTail, ReferenceTail, ReducedTail).
 
-% There is a mine; account for it in the reference list.
-%% reduceNumbersRow([Number | SubtractingTail], [* | ReferenceTail], [NewNumber | Adapted]) :-
-%%     minus_one(Number, NewNumber),
-%%     reduceNumbersRow(SubtractingTail, ReferenceTail, Adapted).
-
-
-%% reduceNumbersRow([* | SubtractingTail], [_ | ReferenceTail], [* | Adapted]) :-
-%%     reduceNumbersRow(SubtractingTail, ReferenceTail, Adapted).
-
-%% % There is no mine; do not change subtracting list.
-%% reduceNumbersRow([Unchanged | SubtractingTail], [Number | ReferenceTail], [Unchanged | Adapted]) :-
-%%     valid_number(Unchanged),
-%%     valid_number(Number),
-%%     reduceNumbersRow(SubtractingTail, ReferenceTail, Adapted).
 
 % Initiate
-reduceNumbersGrid([FirstRow, SecondRow | Tail], Reduced) :-
-    reduceNumbersGrid(FirstRow, SecondRow, Tail, Reduced).
+reduce_grid([FirstRow, SecondRow | Tail]) :-
+    reduce_grid(FirstRow, SecondRow, Tail).
 
 % Last row
-reduceNumbersGrid(PenultimateRow, ThisRow, [], [ReducedHead]) :-
+reduce_grid(PenultimateRow, ThisRow, []) :-
     reduceNumbersRow(ThisRow, PenultimateRow, X1),
     reduceNumbersRow(X1, [0 | PenultimateRow], X2),
     [_ | PenultimateRowTail] = PenultimateRow,
     reduceNumbersRow(X2, PenultimateRowTail, X3),
     reduceNumbersRow(X3, [0 | ThisRow], X4),
     [_ | ThisRowTail] = ThisRow,
-    reduceNumbersRow(X4, ThisRowTail, ReducedHead).
+    reduceNumbersRow(X4, ThisRowTail, ReducedHead),
+    allZeroRow(ReducedHead).
 
 % First row
-reduceNumbersGrid(ThisRow, SecondRow, [NextRow | Tail], [ReducedHead | ReducedTail]) :-
+reduce_grid(ThisRow, SecondRow, [NextRow | Tail]) :-
     reduceNumbersRow(ThisRow, SecondRow, X1),
     reduceNumbersRow(X1, [0 | SecondRow], X2),
     [_ | SecondRowTail] = SecondRow,
@@ -97,10 +85,11 @@ reduceNumbersGrid(ThisRow, SecondRow, [NextRow | Tail], [ReducedHead | ReducedTa
     reduceNumbersRow(X3, [0 | ThisRow], X4),
     [_ | ThisRowTail] = ThisRow,
     reduceNumbersRow(X4, ThisRowTail, ReducedHead),
-    reduceNumbersGrid(ThisRow, SecondRow, NextRow, Tail, ReducedTail).
+    allZeroRow(ReducedHead),
+    reduce_grid(ThisRow, SecondRow, NextRow, Tail).
 
 % Inner row
-reduceNumbersGrid(AboveRow, ThisRow, BelowRow, [NextRow | Tail], [ReducedHead | ReducedTail]) :-
+reduce_grid(AboveRow, ThisRow, BelowRow, [NextRow | Tail]) :-
     reduceNumbersRow(ThisRow, AboveRow, X1),
     reduceNumbersRow(X1, [0 | AboveRow], X2),
     [_ | AboveRowTail] = AboveRow,
@@ -112,10 +101,11 @@ reduceNumbersGrid(AboveRow, ThisRow, BelowRow, [NextRow | Tail], [ReducedHead | 
     reduceNumbersRow(X6, [0 | ThisRow], X7),
     [_ | ThisRowTail] = ThisRow,
     reduceNumbersRow(X7, ThisRowTail, ReducedHead),
-    reduceNumbersGrid(ThisRow, BelowRow, NextRow, Tail, ReducedTail).
+    allZeroRow(ReducedHead),
+    reduce_grid(ThisRow, BelowRow, NextRow, Tail).
 
 
-reduceNumbersGrid(AboveRow, ThisRow, BelowRow, [], [ReducedHead | ReducedTail]) :-
+reduce_grid(AboveRow, ThisRow, BelowRow, []) :-
     reduceNumbersRow(ThisRow, AboveRow, X1),
     reduceNumbersRow(X1, [0 | AboveRow], X2),
     [_ | AboveRowTail] = AboveRow,
@@ -127,21 +117,15 @@ reduceNumbersGrid(AboveRow, ThisRow, BelowRow, [], [ReducedHead | ReducedTail]) 
     reduceNumbersRow(X6, [0 | ThisRow], X7),
     [_ | ThisRowTail] = ThisRow,
     reduceNumbersRow(X7, ThisRowTail, ReducedHead),
-    reduceNumbersGrid(ThisRow, BelowRow, [], ReducedTail).
+    allZeroRow(ReducedHead),
+    reduce_grid(ThisRow, BelowRow, []).
 
-validBoard(Board) :- reduceNumbersGrid(Board, Reduced), allZeroRows(Reduced).
+valid_board(Board) :- reduce_grid(Board).
 
-printReduce(Board) :- reduceNumbersGrid(Board, Reduced), write(Reduced).
+print_board([]).
+print_board([Row | Rows]) :- print_row(Row), print_board(Rows).
 
-printBoard([]).
-printBoard([Row | Rows]) :- printRow(Row), printBoard(Rows).
+print_row([]) :- nl.
+print_row([Tile | Tiles]) :- write(Tile), write(" "), print_row(Tiles).
 
-printRow([]) :- nl.
-printRow([Tile | Tiles]) :- write(Tile), write(" "), printRow(Tiles).
-
-minesweeper(Query) :- validBoard(Query), printBoard(Query).
-
-board(3, [
-    [_, 2],
-    [2, _]
-]).
+minesweeper(Query) :- valid_board(Query), print_board(Query).
