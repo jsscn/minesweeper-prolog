@@ -106,3 +106,4 @@ print_row([]) :- nl.
 print_row([Tile | Tiles]) :- write(Tile), write(" "), print_row(Tiles).
 
 minesweeper(Board) :- valid_board(Board), print_board(Board).
+minesweeper(Board, _) :- minesweeper(Board).
