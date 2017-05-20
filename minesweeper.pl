@@ -1,7 +1,3 @@
-fully_reduced([]).
-fully_reduced([0 | Tail]) :- fully_reduced(Tail).
-fully_reduced([* | Tail]) :- fully_reduced(Tail).
-
 minus_one(8, 7).
 minus_one(7, 6).
 minus_one(6, 5).
@@ -21,21 +17,56 @@ valid_number(2).
 valid_number(1).
 valid_number(0).
 
-% first list is the row we are subtracting the numbers from; second list is
-% the one we are referencing in order to adapt the first;
-% third is the adapted list.
 
 
-reduce(Number, *, NewNumber) :- minus_one(Number, NewNumber).
-reduce(Whatever, Number, Whatever) :- valid_number(Number).
-reduce(*, *, *).
+nonempty([[_|_] | _]).
+nonempty([[] | Rest]) :- nonempty(Rest).
 
-reduce_row([], [_|_], []) :- !.
-reduce_row(Remainder, [], Remainder) :- !.
+empty([]).
+empty([[] | Rest]) :- empty(Rest).
 
-reduce_row([Subtract | SubtractingTail], [Reference | ReferenceTail], [Reduced | ReducedTail]) :-
-    reduce(Subtract, Reference, Reduced),
-    reduce_row(SubtractingTail, ReferenceTail, ReducedTail).
+
+%% Return first element of each sublist
+%% (and what remains from the original list)
+first_column([], [], []).
+first_column([[] | Rows], [[] | Remainder], Column) :-
+    first_column(Rows, Remainder, Column).
+
+first_column([[Element | Row] | Rows], [Row | Remainder], [Element | Column]) :-
+    first_column(Rows, Remainder, Column).
+
+
+%% Transpose a list of lists.
+transpose(All, []) :- empty(All).
+transpose(All, [NewRow | Result]) :-
+    nonempty(All),
+    first_column(All, YetToBeTransposed, NewRow),
+    transpose(YetToBeTransposed, Result).
+
+
+
+%% Tile reduces iff:
+%% - it is a mine; or
+%% - it's a number which the number of mines in neighbouring tiles
+tile_reduces(*, _).
+tile_reduces(0, []).
+tile_reduces(Number, [* | Neighbours]) :-
+    minus_one(Number, NewNumber),
+    tile_reduces(NewNumber, Neighbours).
+
+tile_reduces(Number, [NeighbourNumber | Neighbours]) :-
+    valid_number(Number),
+    valid_number(NeighbourNumber),
+    tile_reduces(Number, Neighbours).
+
+
+
+%% Row reduces iff all its tiles reduce
+row_reduces([], _).
+row_reduces([Tile | Row], [Neighbours | Others]) :-
+    tile_reduces(Tile, Neighbours),
+    row_reduces(Row, Others).
+
 
 
 % Initiate /1
@@ -44,58 +75,53 @@ grid_reduces([FirstRow, SecondRow | Tail]) :-
 
 % Last row /3
 grid_reduces(PenultimateRow, ThisRow, []) :-
-    reduce_row(ThisRow, PenultimateRow, X1),
-    reduce_row(X1, [0 | PenultimateRow], X2),
     [_ | PenultimateRowTail] = PenultimateRow,
-    reduce_row(X2, PenultimateRowTail, X3),
-    reduce_row(X3, [0 | ThisRow], X4),
     [_ | ThisRowTail] = ThisRow,
-    reduce_row(X4, ThisRowTail, Reduced),
-    fully_reduced(Reduced).
+    transpose([
+        [0 | PenultimateRow], PenultimateRow, PenultimateRowTail,
+        [0 | ThisRow], ThisRowTail],
+            Neighbours),
+    row_reduces(ThisRow, Neighbours).
 
 % First row /3
 grid_reduces(ThisRow, SecondRow, [NextRow | Tail]) :-
     grid_reduces(ThisRow, SecondRow, NextRow, Tail),
-    reduce_row(ThisRow, SecondRow, X1),
-    reduce_row(X1, [0 | SecondRow], X2),
     [_ | SecondRowTail] = SecondRow,
-    reduce_row(X2, SecondRowTail, X3),
-    reduce_row(X3, [0 | ThisRow], X4),
     [_ | ThisRowTail] = ThisRow,
-    reduce_row(X4, ThisRowTail, Reduced),
-    fully_reduced(Reduced).
+    transpose([
+        SecondRow,
+        [0 | SecondRow],
+        SecondRowTail,
+        [0 | ThisRow],
+        ThisRowTail
+    ], Neighbours),
+    row_reduces(ThisRow, Neighbours).
 
 % Inner row /4
 grid_reduces(AboveRow, ThisRow, BelowRow, [NextRow | Tail]) :-
     grid_reduces(ThisRow, BelowRow, NextRow, Tail),
-    reduce_row(ThisRow, AboveRow, X1),
-    reduce_row(X1, [0 | AboveRow], X2),
     [_ | AboveRowTail] = AboveRow,
-    reduce_row(X2, AboveRowTail, X3),
-    reduce_row(X3, BelowRow, X4),
-    reduce_row(X4, [0 | BelowRow], X5),
     [_ | BelowRowTail] = BelowRow,
-    reduce_row(X5, BelowRowTail, X6),
-    reduce_row(X6, [0 | ThisRow], X7),
     [_ | ThisRowTail] = ThisRow,
-    reduce_row(X7, ThisRowTail, Reduced),
-    fully_reduced(Reduced).
+    transpose([
+        AboveRow, [0 | AboveRow], AboveRowTail,
+        BelowRow, [0 | BelowRow], BelowRowTail,
+        [0 | ThisRow], ThisRowTail
+    ], Neighbours),
+    row_reduces(ThisRow, Neighbours).
 
 % Second to last row /4
 grid_reduces(AboveRow, ThisRow, BelowRow, []) :-
     grid_reduces(ThisRow, BelowRow, []),
-    reduce_row(ThisRow, AboveRow, X1),
-    reduce_row(X1, [0 | AboveRow], X2),
     [_ | AboveRowTail] = AboveRow,
-    reduce_row(X2, AboveRowTail, X3),
-    reduce_row(X3, BelowRow, X4),
-    reduce_row(X4, [0 | BelowRow], X5),
     [_ | BelowRowTail] = BelowRow,
-    reduce_row(X5, BelowRowTail, X6),
-    reduce_row(X6, [0 | ThisRow], X7),
     [_ | ThisRowTail] = ThisRow,
-    reduce_row(X7, ThisRowTail, Reduced),
-    fully_reduced(Reduced).
+    transpose([
+        AboveRow, [0 | AboveRow], AboveRowTail,
+        BelowRow, [0 | BelowRow], BelowRowTail,
+        [0 | ThisRow], ThisRowTail
+    ], Neighbours),
+    row_reduces(ThisRow, Neighbours).
 
 valid_board(Board) :- grid_reduces(Board).
 
