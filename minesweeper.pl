@@ -23,7 +23,7 @@ valid_number(0).
 
 
 
-%% Predicates for emptiness of sublists.
+%% Predicates for (non)emptiness of sublists.
 nonempty([[_|_] | _]).
 nonempty([[] | Rest]) :- nonempty(Rest).
 
@@ -52,7 +52,7 @@ transpose(All, [NewRow | Result]) :-
 
 %% Tile reduces iff:
 %% - it is a mine; or
-%% - it's a number which the number of mines in neighbouring tiles
+%% - it's a number which equals the number of mines in neighbouring tiles
 tile_reduces(*, _).
 tile_reduces(0, []).
 tile_reduces(Number, [* | Neighbours]) :-
@@ -74,23 +74,18 @@ row_reduces([Tile | Row], [Neighbours | Others]) :-
 
 
 
-% Initiate /1
+%% grid_reduces: true iff all numbers reduce to 0
+
+% Initiate
 grid_reduces([FirstRow, SecondRow | Tail]) :-
-    grid_reduces(FirstRow, SecondRow, Tail).
+    grid_reduces(none, FirstRow, SecondRow, Tail).
 
-% Last row /3
-grid_reduces(PenultimateRow, ThisRow, []) :-
-    [_ | PenultimateRowTail] = PenultimateRow,
-    [_ | ThisRowTail] = ThisRow,
-    transpose([
-        [0 | PenultimateRow], PenultimateRow, PenultimateRowTail,
-        [0 | ThisRow], ThisRowTail],
-            Neighbours),
-    row_reduces(ThisRow, Neighbours).
+% Initiate for single-row board
+grid_reduces([Row]) :-
+    grid_reduces(none, Row, none, []).
 
-% First row /3
-grid_reduces(ThisRow, SecondRow, [NextRow | Tail]) :-
-    grid_reduces(ThisRow, SecondRow, NextRow, Tail),
+% First row
+grid_reduces(none, ThisRow, SecondRow, [NextRow | Tail]) :-
     [_ | SecondRowTail] = SecondRow,
     [_ | ThisRowTail] = ThisRow,
     transpose([
@@ -100,11 +95,56 @@ grid_reduces(ThisRow, SecondRow, [NextRow | Tail]) :-
         [0 | ThisRow],
         ThisRowTail
     ], Neighbours),
+    row_reduces(ThisRow, Neighbours),
+    grid_reduces(ThisRow, SecondRow, NextRow, Tail).
+
+% First row if there are only two rows
+grid_reduces(none, ThisRow, SecondRow, []) :-
+    [_ | SecondRowTail] = SecondRow,
+    [_ | ThisRowTail] = ThisRow,
+    transpose([
+        SecondRow,
+        [0 | SecondRow],
+        SecondRowTail,
+        [0 | ThisRow],
+        ThisRowTail
+    ], Neighbours),
+    row_reduces(ThisRow, Neighbours),
+    grid_reduces(ThisRow, SecondRow, none, []).
+
+% First row if there is only one row
+grid_reduces(none, ThisRow, none, []) :-
+    [_ | ThisRowTail] = ThisRow,
+    transpose([
+        ThisRowTail, [0 | ThisRow]
+    ], Neighbours),
     row_reduces(ThisRow, Neighbours).
+
+% Last row
+grid_reduces(PenultimateRow, ThisRow, none, []) :-
+    [_ | PenultimateRowTail] = PenultimateRow,
+    [_ | ThisRowTail] = ThisRow,
+    transpose([
+        [0 | PenultimateRow], PenultimateRow, PenultimateRowTail,
+        [0 | ThisRow], ThisRowTail
+    ], Neighbours),
+    row_reduces(ThisRow, Neighbours).
+
+% Second to last row
+grid_reduces(AboveRow, ThisRow, BelowRow, []) :-
+    [_ | AboveRowTail] = AboveRow,
+    [_ | BelowRowTail] = BelowRow,
+    [_ | ThisRowTail] = ThisRow,
+    transpose([
+        AboveRow, [0 | AboveRow], AboveRowTail,
+        BelowRow, [0 | BelowRow], BelowRowTail,
+        [0 | ThisRow], ThisRowTail
+    ], Neighbours),
+    row_reduces(ThisRow, Neighbours),
+    grid_reduces(ThisRow, BelowRow, none, []).
 
 % Inner row /4
 grid_reduces(AboveRow, ThisRow, BelowRow, [NextRow | Tail]) :-
-    grid_reduces(ThisRow, BelowRow, NextRow, Tail),
     [_ | AboveRowTail] = AboveRow,
     [_ | BelowRowTail] = BelowRow,
     [_ | ThisRowTail] = ThisRow,
@@ -113,28 +153,23 @@ grid_reduces(AboveRow, ThisRow, BelowRow, [NextRow | Tail]) :-
         BelowRow, [0 | BelowRow], BelowRowTail,
         [0 | ThisRow], ThisRowTail
     ], Neighbours),
-    row_reduces(ThisRow, Neighbours).
+    row_reduces(ThisRow, Neighbours),
+    grid_reduces(ThisRow, BelowRow, NextRow, Tail).
 
-% Second to last row /4
-grid_reduces(AboveRow, ThisRow, BelowRow, []) :-
-    grid_reduces(ThisRow, BelowRow, []),
-    [_ | AboveRowTail] = AboveRow,
-    [_ | BelowRowTail] = BelowRow,
-    [_ | ThisRowTail] = ThisRow,
-    transpose([
-        AboveRow, [0 | AboveRow], AboveRowTail,
-        BelowRow, [0 | BelowRow], BelowRowTail,
-        [0 | ThisRow], ThisRowTail
-    ], Neighbours),
-    row_reduces(ThisRow, Neighbours).
+
 
 valid_board(Board) :- grid_reduces(Board).
+
+
 
 print_board([]).
 print_board([Row | Rows]) :- print_row(Row), print_board(Rows).
 
+
 print_row([]) :- nl.
 print_row([Tile | Tiles]) :- write(Tile), write(" "), print_row(Tiles).
+
+
 
 minesweeper(Board) :- valid_board(Board), print_board(Board).
 minesweeper(Board, Result) :- minesweeper(Board), Result = Board.
