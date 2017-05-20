@@ -1,3 +1,7 @@
+%% Written by Josse Coen.
+
+%% Hard-code this relation to limit the search space:
+%% the largest number of neighbours for any tile is 8.
 minus_one(8, 7).
 minus_one(7, 6).
 minus_one(6, 5).
@@ -19,6 +23,7 @@ valid_number(0).
 
 
 
+%% Predicates for emptiness of sublists.
 nonempty([[_|_] | _]).
 nonempty([[] | Rest]) :- nonempty(Rest).
 
@@ -132,4 +137,4 @@ print_row([]) :- nl.
 print_row([Tile | Tiles]) :- write(Tile), write(" "), print_row(Tiles).
 
 minesweeper(Board) :- valid_board(Board), print_board(Board).
-minesweeper(Board, _) :- minesweeper(Board).
+minesweeper(Board, Result) :- minesweeper(Board), Result = Board.
